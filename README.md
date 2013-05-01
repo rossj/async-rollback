@@ -6,6 +6,16 @@ normally executes the callback immediately if any task returns an error, but thi
 is not always desired. `async-rollback` contains a `parallelRollback` method which
 can undo parallel tasks that succeeded if one of the tasks fails.
 
+## Installation
+
+To install using npm:
+
+    npm install async-rollback
+
+To use, simply `require('async-rollback')` near the beginning of your node code.
+It augments the normal `async` module so must only be required one time.
+
+
 ## Documentation
 ### Control Flow
 
@@ -80,6 +90,86 @@ async.parallel({
 function(errs, results) {
     // errs = {one: null, two: 2}
     // results = {one: 1, two: null}
+    if (errs)
+        console.log('Errors occurred');
+});
+```
+---------------------------------------
+<a name="parallelRollback" />
+### parallelRollback(tasks, [callback])
+
+Similar to `parallel` and `parallelAll`, except each task may have an `undo`
+property that is executed if that task succeeds while others fail. This function
+works with the typical arrays and objects of tasks (and behaves the same as
+`parallelAll` in this case), but accepts a new array (or object) format of
+`do` / `undo` functions. If any task (or tasks) fail, the `undo` function of any
+non-failing task will automatically be called. The final callback is executed
+with an array (or object) of results (and possibly errors) after all tasks
+and potential `undo` functions have been called.
+
+__Arguments__
+
+* tasks - An array or object of `do` / `undo` tasks to run. Each `do` function is passed 
+  a callback(err, result) it must call on completion with an error (which can
+  be null) and an optional result value. The `undo` function may be called if the task
+  succeeds while others fail. The `undo` function is passed the value of the `do` function,
+  along with a callback(err) it must call on completion.
+* callback(errs, results) - An optional callback to run once all the functions
+  have completed. This function gets a results array (or object) containing all 
+  the result arguments passed to the task callbacks. It also receives an error
+  array (or object) if any errors occurred (null otherwise).
+
+__Example__
+
+```js
+async.parallelRollback([
+    {
+        do : function(callback) {
+            uploadImage('image1.png', callback);
+        },
+        undo : function(result, callback) {
+            deleteImage(result, callback);
+        }
+    },
+    {
+        do : function(callback) {
+            uploadImage('image2.png', callback);
+        },
+        undo : function(result, callback) {
+            deleteImage(result, callback);
+        }
+    }
+],
+// optional callback
+function(errs, results){
+    // With a typical .parallel() call, if one of the uploads failed then the other image would be left
+    // uploaded. By using .parallelRollback(), either both images or no images will get uploaded.
+    // For example, if the uploading of image2 fails, then the undo method of the first task will be called.
+    if (errs)
+        console.log('Errors occurred');
+});
+
+
+// an example using an object instead of an array
+async.parallel({
+    image1 : {
+        do : function(callback) {
+            uploadImage('image1.png', callback);
+        },
+        undo : function(result, callback) {
+            deleteImage(result, callback);
+        }
+    },
+    image2 : {
+        do : function(callback) {
+            uploadImage('image2.png', callback);
+        },
+        undo : function(result, callback) {
+            deleteImage(result, callback);
+        }
+    }
+},
+function(errs, results) {
     if (errs)
         console.log('Errors occurred');
 });
