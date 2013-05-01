@@ -35,7 +35,7 @@ async.parallelAll = function (tasks, callback) {
 		// err should always be null as the tasks always return null
 
 		var errors = _.pluck(results, 'error');
-		var results = _.pluck(results, 'result');
+		results = _.pluck(results, 'result');
 
 		// If the input tasks was a hash, make the errors and results hashes as well
 		if ( tasks.constructor !== Array ) {
@@ -57,31 +57,27 @@ async.parallelRollback = function (tasks, callback) {
 	/**
 	 * Ensures that all tasks are plain objects with do & undo properties.
 	 * @param task
-	 * @param key
-	 * @param array
+	 * @return {{do: function, undo:function|null}}
 	 */
-	var normalizeTask = function (task, key, array) {
-		array[key] = typeof task === 'function' ? {
-			do : task,
-			undo : null
-		} : task;
+	var normalizeTask = function (task) {
+		return typeof task === 'function'
+			? { 'do' : task, 'undo' : null }
+			: task;
 	};
 
-	// Normalize tasks
-	_(tasks).forEach(normalizeTask);
+	// Normalize tasks into array of { do : function(), undo : function() }
+	var _tasks = _.map(tasks, normalizeTask);
 
 	// Get array or hash of augmented tasks to send to .parallelAll()
-	var _tasks = _.pluck(tasks, 'do');
-	if (tasks.constructor !== Array) {
-		_tasks = _.zipObject(_.keys(tasks), _tasks);
+	var _doTasks = _.pluck(_tasks, 'do');
+	if ( tasks.constructor !== Array ) {
+		_doTasks = _.zipObject(_.keys(tasks), _doTasks);
 	}
 
-	async.parallelAll(_tasks, function (errors, results) {
+	async.parallelAll(_doTasks, function (errors, results) {
 		// If no errors occurred, return the results
-		if ( !errors ) {
-			callback(null, results);
-			return;
-		}
+		if ( !errors )
+			return callback(null, results);
 
 		// Errors occured, call undo methods on non-erroring tasks
 		var undoTasks = [];
@@ -89,10 +85,19 @@ async.parallelRollback = function (tasks, callback) {
 			// Don't call undo on errored tasks, as they did not complete
 			if ( error ) return;
 
+			// Check the task even has an undo method
+			var undo = tasks[key]['undo'];
+			if ( typeof undo !== 'function' ) return;
+
 			undoTasks.push(noError(function (cb) {
-				tasks[key].undo(results[key], cb);
+				undo(results[key], cb);
 			}));
 		});
+
+		// If there are no undo tasks, just callback
+		if ( !undoTasks.length )
+			return callback(errors, results);
+
 
 		async.parallel(undoTasks, function () {
 			callback(errors, results);
