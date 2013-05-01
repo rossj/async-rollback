@@ -2,7 +2,7 @@
 	"name" : "async-rollback",
 	"description" : "A plugin for caolan's async module that add support to rollback successful async operations on failure.",
 	"keywords" : ["async", "rollback", "undo", "integrity"],
-	"version" : "0.0.0",
+	"version" : "0.0.1",
 	"author" : "Ross Johnson <ross@mazira.com>",
 	"contributors" : [],
 	"repository" : {
