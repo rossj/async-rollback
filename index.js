@@ -25,9 +25,11 @@ var noError = function (task) {
  * Otherwise, the error parameter will be an array or hash, depending on the task input type. Even if errors occur,
  * the callback will still receive an array / hash of results for the successful tasks.
  * @param {Array.<function>|Object.<string, function>} tasks an array
- * @param {function} callback
+ * @param {function=} callback
  */
 async.parallelAll = function (tasks, callback) {
+	callback = callback || function () {};
+
 	// Get array of augmented tasks to send to .parallel()
 	var _tasks = _.map(tasks, noError);
 
@@ -50,10 +52,12 @@ async.parallelAll = function (tasks, callback) {
 /**
  * Similar to async.parallel, except that each task can have an optional undo method, which will be called if that
  * task succeeds but others fail.
- * @param tasks
- * @param callback
+ * @param {Array.<function>|Object.<string, function>|Array.<{do, undo}>|Object.<string,{do, undo}>} tasks
+ * @param {function=} callback
  */
 async.parallelRollback = function (tasks, callback) {
+	callback = callback || function () {};
+
 	/**
 	 * Ensures that all tasks are plain objects with do & undo properties.
 	 * @param task

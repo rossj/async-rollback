@@ -50,6 +50,24 @@ var failTasksArray = _.values(failTasksHash);
 
 describe('async-rollback', function () {
 	describe('parallelAll', function () {
+		it('should work without a final callback', function (cb) {
+			var a;
+			async.parallelAll([
+				function(cb) {
+					setTimeout(function () {
+						a = 1;
+						cb();
+					}, 20);
+				}
+			]);
+
+			// Wait for the tasks to complete and then check the value
+			setTimeout(function () {
+				should.exist(a);
+				a.should.eql(1);
+				cb();
+			}, 25);
+		});
 		describe('when given an array of tasks', function () {
 			it('should behave as .parallel() when all tasks succeed', function (cb) {
 				compareAsyncMethods('parallel', successTasksArray, 'parallelAll', successTasksArray, cb);
